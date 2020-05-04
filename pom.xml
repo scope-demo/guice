@@ -122,6 +122,7 @@ See the Apache License Version 2.0 for the specific language governing permissio
     -->
     <guice.with.no_aop>true</guice.with.no_aop>
     <gpg.skip>true</gpg.skip>
+    <scopeSurefireArg />
   </properties>
 
   <dependencyManagement>
@@ -309,7 +310,7 @@ See the Apache License Version 2.0 for the specific language governing permissio
               <phase>test</phase>
               <goals><goal>test</goal></goals>
               <configuration>
-                <argLine>-Dguice_include_stack_traces=OFF</argLine>
+                <argLine>${scopeSurefireArg} -Dguice_include_stack_traces=OFF</argLine>
               </configuration>
             </execution>
             <execution>
@@ -317,7 +318,7 @@ See the Apache License Version 2.0 for the specific language governing permissio
               <phase>test</phase>
               <goals><goal>test</goal></goals>
               <configuration>
-                <argLine>-Dguice_include_stack_traces=COMPLETE</argLine>
+                <argLine>${scopeSurefireArg} -Dguice_include_stack_traces=COMPLETE</argLine>
               </configuration>
             </execution>
             <execution>
@@ -325,7 +326,7 @@ See the Apache License Version 2.0 for the specific language governing permissio
               <phase>test</phase>
               <goals><goal>test</goal></goals>
               <configuration>
-                <argLine>-Dguice_include_stack_traces=ONLY_FOR_DECLARING_SOURCE</argLine>
+                <argLine>${scopeSurefireArg} -Dguice_include_stack_traces=ONLY_FOR_DECLARING_SOURCE</argLine>
               </configuration>
             </execution>
           </executions>
@@ -451,6 +452,12 @@ See the Apache License Version 2.0 for the specific language governing permissio
   </build>
 
   <profiles>
+    <profile>
+      <id>scope</id>
+      <properties>
+        <scopeSurefireArg>-javaagent:/home/travis/build/scope-demo/guice/.scope/scope-agent.jar</scopeSurefireArg>
+      </properties>
+    </profile>
     <profile>
       <id>jdk8</id>
       <activation>

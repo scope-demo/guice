@@ -1,0 +1,6 @@
+code_path:
+  enabled: true
+  base_packages: "com.google.inject"
+runner:
+  enabled: true
+  send_spans: true
