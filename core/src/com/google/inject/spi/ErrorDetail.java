@@ -52,6 +52,7 @@ public abstract class ErrorDetail<SelfT extends ErrorDetail<SelfT>> implements S
    *   <li>Details about the error such as the source of the error
    *   <li>Hints for fixing the error if available
    *   <li>Link to the documentation on this error in greater detail
+   * </ul>
    *
    * @param index index for this error
    * @param mergeableErrors list of errors that are mergeable with this error
@@ -59,13 +60,13 @@ public abstract class ErrorDetail<SelfT extends ErrorDetail<SelfT>> implements S
    */
   public final void format(int index, List<ErrorDetail<?>> mergeableErrors, Formatter formatter) {
     String id = getErrorIdentifier().map(s -> "[" + Messages.redBold(s) + "]: ").orElse("");
-    formatter.format("%s) %s%s%n", index, id, getMessage());
+    formatter.format("%s) %s%s\n", index, id, getMessage());
     formatDetail(mergeableErrors, formatter);
     // TODO(b/151482394): Output potiential fixes for the error
     Optional<String> learnMoreLink = getLearnMoreLink();
     if (learnMoreLink.isPresent()) {
-      formatter.format("%n%s%n", Messages.bold("Learn more:"));
-      formatter.format("  %s%n", Messages.underline(learnMoreLink.get()));
+      formatter.format("\n%s\n", Messages.bold("Learn more:"));
+      formatter.format("  %s\n", Messages.underline(learnMoreLink.get()));
     }
   }
 

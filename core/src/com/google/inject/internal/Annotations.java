@@ -43,7 +43,6 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
-import javax.inject.Qualifier;
 
 /**
  * Annotation utilities.
@@ -121,7 +120,7 @@ public class Annotations {
     for (Method method : annotationType.getDeclaredMethods()) {
       result.put(method.getName(), method.getDefaultValue());
     }
-    return result.build();
+    return result.buildOrThrow();
   }
 
   /** Implements {@link Annotation#equals}. */
@@ -215,10 +214,12 @@ public class Annotations {
   private static class AnnotationToStringConfig {
     final boolean quote;
     final boolean includeMemberName;
+    final boolean dollarSeparator;
 
-    AnnotationToStringConfig(boolean quote, boolean includeMemberName) {
+    AnnotationToStringConfig(boolean quote, boolean includeMemberName, boolean dollarSeparator) {
       this.quote = quote;
       this.includeMemberName = includeMemberName;
+      this.dollarSeparator = dollarSeparator;
     }
   }
 
@@ -258,6 +259,36 @@ public class Annotations {
     return sb.toString();
   }
 
+  /**
+   * Returns the string representation of the annotation class as it would appear in an annotation
+   * instance's toString() method.
+   *
+   * <p>In earlier JDKs, the string representation mirrored Class.getName() (which uses $ to
+   * separate outer and inner classes), but newer JDKs use . as the separator).
+   */
+  public static String annotationInstanceClassString(
+      Class<? extends Annotation> ann, boolean includePackage) {
+    if (ANNOTATION_TO_STRING_CONFIG.dollarSeparator) {
+      if (includePackage || ann.getPackage() == null) {
+        return "@" + ann.getName();
+      }
+      return "@" + ann.getName().substring(ann.getPackage().getName().length() + 1);
+    }
+    return "@" + dotSeparatedParentOrPackage(ann, includePackage);
+  }
+
+  private static String dotSeparatedParentOrPackage(Class<?> ann, boolean includePackage) {
+    if (ann.getDeclaringClass() == null) {
+      if (includePackage) {
+        return ann.getPackage().getName() + "." + ann.getSimpleName();
+      }
+      return ann.getSimpleName();
+    }
+    return dotSeparatedParentOrPackage(ann.getDeclaringClass(), includePackage)
+        + "."
+        + ann.getSimpleName();
+  }
+
   @Retention(RUNTIME)
   private @interface TestAnnotation {
     String value();
@@ -273,7 +304,8 @@ public class Annotations {
               .toString();
       boolean quote = annotation.contains("\"determineAnnotationToStringConfig\"");
       boolean includeMemberName = annotation.contains("value=");
-      return new AnnotationToStringConfig(quote, includeMemberName);
+      boolean dollarSeparator = annotation.contains("Annotations$TestAnnotation");
+      return new AnnotationToStringConfig(quote, includeMemberName, dollarSeparator);
     } catch (NoSuchMethodException e) {
       throw new AssertionError(e);
     }
@@ -312,7 +344,10 @@ public class Annotations {
   }
 
   private static final AnnotationChecker scopeChecker =
-      new AnnotationChecker(Arrays.asList(ScopeAnnotation.class, javax.inject.Scope.class));
+      new AnnotationChecker(
+          Arrays.asList(
+              ScopeAnnotation.class,
+              jakarta.inject.Scope.class));
 
   public static boolean isScopeAnnotation(Class<? extends Annotation> annotationType) {
     return scopeChecker.hasAnnotations(annotationType);
@@ -369,7 +404,10 @@ public class Annotations {
   }
 
   private static final AnnotationChecker bindingAnnotationChecker =
-      new AnnotationChecker(Arrays.asList(BindingAnnotation.class, Qualifier.class));
+      new AnnotationChecker(
+          Arrays.asList(
+              BindingAnnotation.class,
+              jakarta.inject.Qualifier.class));
 
   /** Returns true if annotations of the specified type are binding annotations. */
   public static boolean isBindingAnnotation(Class<? extends Annotation> annotationType) {
@@ -377,28 +415,27 @@ public class Annotations {
   }
 
   /**
-   * If the annotation is an instance of {@code javax.inject.Named}, canonicalizes to
+   * If the annotation is an instance of {@code jakarta.inject.Named}, canonicalizes to
    * com.google.guice.name.Named. Returns the given annotation otherwise.
    */
   public static Annotation canonicalizeIfNamed(Annotation annotation) {
-    if (annotation instanceof javax.inject.Named) {
-      return Names.named(((javax.inject.Named) annotation).value());
-    } else {
-      return annotation;
+    if (annotation instanceof jakarta.inject.Named) {
+      return Names.named(((jakarta.inject.Named) annotation).value());
     }
+    return annotation;
   }
 
   /**
-   * If the annotation is the class {@code javax.inject.Named}, canonicalizes to
+   * If the annotation is the class {@code jakarta.inject.Named}, canonicalizes to
    * com.google.guice.name.Named. Returns the given annotation class otherwise.
    */
   public static Class<? extends Annotation> canonicalizeIfNamed(
       Class<? extends Annotation> annotationType) {
-    if (annotationType == javax.inject.Named.class) {
+    if (
+    annotationType == jakarta.inject.Named.class) {
       return Named.class;
-    } else {
-      return annotationType;
     }
+    return annotationType;
   }
 
   /**

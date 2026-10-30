@@ -1,21 +1,26 @@
 package com.google.inject.errors;
 
+import static com.google.common.truth.Truth.assertThat;
 import static com.google.inject.errors.ErrorMessageTestUtils.assertGuiceErrorEqualsIgnoreLineNumber;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assume.assumeTrue;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.ConfigurationException;
 import com.google.inject.CreationException;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provides;
 import com.google.inject.internal.InternalFlags;
 import com.google.inject.internal.InternalFlags.IncludeStackTraceOption;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import javax.inject.Provider;
-import javax.inject.Qualifier;
+import java.util.Optional;
+import java.util.List;
+import jakarta.inject.Provider;
+import jakarta.inject.Qualifier;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,6 +28,28 @@ import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public final class MissingImplementationErrorTest {
+
+  private static final String GOLDEN_SUFFIX;
+
+  static {
+    boolean nestedAnnotUsesDots;
+    try {
+      nestedAnnotUsesDots =
+          RequiresFooUsingMethod.class
+              .getDeclaredMethod("setMyString", String.class)
+              .getParameters()[0]
+              .getAnnotation(Foo.class)
+              .toString()
+              .equals("@" + MissingImplementationErrorTest.class.getName() + ".Foo()");
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
+    }
+    if (nestedAnnotUsesDots) {
+      GOLDEN_SUFFIX = "_with_dot_annots.txt";
+    } else {
+      GOLDEN_SUFFIX = ".txt";
+    }
+  }
 
   @Before
   public void checkStackTraceIsIncluded() {
@@ -81,7 +108,7 @@ public final class MissingImplementationErrorTest {
     CreationException exception =
         assertThrows(CreationException.class, () -> Guice.createInjector(new TestModule()));
     assertGuiceErrorEqualsIgnoreLineNumber(
-        exception.getMessage(), "missing_implementation_errors.txt");
+        exception.getMessage(), "missing_implementation_errors" + GOLDEN_SUFFIX);
   }
 
   static class TestModule1 extends AbstractModule {
@@ -146,6 +173,156 @@ public final class MissingImplementationErrorTest {
     CreationException exception =
         assertThrows(CreationException.class, () -> Guice.createInjector(new HintsModule()));
     assertGuiceErrorEqualsIgnoreLineNumber(
-        exception.getMessage(), "missing_implementation_with_hints.txt");
+        exception.getMessage(), "missing_implementation_with_hints" + GOLDEN_SUFFIX);
+  }
+
+  private static interface CustomType {
+    static class InnerType {}
+  }
+
+  @Test
+  public void missingImplementationWithHints_memoizesSuggestion() throws Exception {
+    Injector injector = Guice.createInjector();
+    ConfigurationException ex =
+        assertThrows(ConfigurationException.class, () -> injector.getInstance(CustomType.class));
+    // Ensure that the message doesn't contain a "Did you mean?" by default,
+    // because there's no other type that fits.
+    assertThat(ex).hasMessageThat().doesNotContain("Did you mean?");
+    // And even after we insert another type that fits, we don't redo the suggestions.
+    injector.getInstance(CustomType.InnerType.class);
+    assertThat(ex).hasMessageThat().doesNotContain("Did you mean?");
+  }
+
+  @Test
+  public void missingImplementationWithHints_lazyInjectorUsage() throws Exception {
+    // Note: this test is extremely contrived. This scenario is unlikely to happen for real, but
+    // it's a very convenient way to assert that usage of the injector is lazy.
+    // By adding a type into the injector after the exception is thrown but before we
+    // call getMessage, we're validating that the suggestions are populated only on getMessage
+    // usage.
+    // This test works in tandem with the above one which asserts that by default,
+    // the message *will not* have suggestions.
+    Injector injector = Guice.createInjector();
+    ConfigurationException ex =
+        assertThrows(ConfigurationException.class, () -> injector.getInstance(CustomType.class));
+    injector.getInstance(CustomType.InnerType.class);
+    assertThat(ex).hasMessageThat().containsMatch("Did you mean?");
+    assertThat(ex).hasMessageThat().containsMatch("InnerType");
+  }
+
+  private static final class MismatchedOptionalsModule extends AbstractModule {
+    @Override
+    protected void configure() {}
+
+    @Provides
+    Optional<String> provideString() {
+      return Optional.of("ignored");
+    }
+
+    @Provides
+    Optional<Integer> provideInteger(com.google.common.base.Optional<String> dep) {
+      return Optional.of(123);
+    }
+  }
+
+  @Test
+  public void testMismatchedOptionals() {
+    CreationException exception =
+        assertThrows(
+            CreationException.class, () -> Guice.createInjector(new MismatchedOptionalsModule()));
+    assertGuiceErrorEqualsIgnoreLineNumber(
+        exception.getMessage(), "missing_implementation_with_mismatched_optionals.txt");
+  }
+
+  private static final class InjectionMissingExtendsClauseModule extends AbstractModule {
+
+    @Provides
+    List<? extends String> provideString() {
+      throw new RuntimeException("not reachable");
+    }
+
+    @Provides
+    Dao provideInteger(List<String> dep) {
+      throw new RuntimeException("not reachable");
+    }
+  }
+
+  @Test
+  public void testInjectionMissingExtendsClause() {
+    CreationException exception =
+        assertThrows(
+            CreationException.class,
+            () -> Guice.createInjector(new InjectionMissingExtendsClauseModule()));
+    assertGuiceErrorEqualsIgnoreLineNumber(
+        exception.getMessage(), "missing_implementation_missing_extends_clause_java.txt");
+  }
+
+  private static final class InjectionMissingSuperClauseModule extends AbstractModule {
+
+    @Provides
+    List<? super String> provideString() {
+      throw new RuntimeException("not reachable");
+    }
+
+    @Provides
+    Dao provideInteger(List<String> dep) {
+      throw new RuntimeException("not reachable");
+    }
+  }
+
+  @Test
+  public void testInjectionMissingSuperClause() {
+    CreationException exception =
+        assertThrows(
+            CreationException.class,
+            () -> Guice.createInjector(new InjectionMissingSuperClauseModule()));
+    assertGuiceErrorEqualsIgnoreLineNumber(
+        exception.getMessage(), "missing_implementation_missing_super_clause_java.txt");
+  }
+
+  private static final class InjectionHasUnnecessaryExtendsClauseModule extends AbstractModule {
+
+    @Provides
+    List<String> provideString() {
+      throw new RuntimeException("not reachable");
+    }
+
+    @Provides
+    Dao provideInteger(List<? extends String> dep) {
+      throw new RuntimeException("not reachable");
+    }
+  }
+
+  @Test
+  public void testInjectionHasUnnecessaryExtendsClause() {
+    CreationException exception =
+        assertThrows(
+            CreationException.class,
+            () -> Guice.createInjector(new InjectionHasUnnecessaryExtendsClauseModule()));
+    assertGuiceErrorEqualsIgnoreLineNumber(
+        exception.getMessage(), "missing_implementation_has_unnecessary_extends_clause_java.txt");
+  }
+
+  private static final class InjectionHasUnnecessarySuperClauseModule extends AbstractModule {
+
+    @Provides
+    List<String> provideString() {
+      throw new RuntimeException("not reachable");
+    }
+
+    @Provides
+    Dao provideInteger(List<? super String> dep) {
+      throw new RuntimeException("not reachable");
+    }
+  }
+
+  @Test
+  public void testInjectionHasUnnecessarySuperClause() {
+    CreationException exception =
+        assertThrows(
+            CreationException.class,
+            () -> Guice.createInjector(new InjectionHasUnnecessarySuperClauseModule()));
+    assertGuiceErrorEqualsIgnoreLineNumber(
+        exception.getMessage(), "missing_implementation_has_unnecessary_super_clause_java.txt");
   }
 }

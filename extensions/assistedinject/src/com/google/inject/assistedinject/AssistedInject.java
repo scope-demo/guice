@@ -19,6 +19,7 @@ package com.google.inject.assistedinject;
 import static java.lang.annotation.ElementType.CONSTRUCTOR;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import com.google.errorprone.annotations.Keep;
 import com.google.inject.Inject;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -40,11 +41,12 @@ import java.lang.annotation.Target;
  * thus receive none of the benefits.
  *
  * <p>Constructor parameters must be either supplied by the factory interface and marked with <code>
- * @Assisted</code>, or they must be injectable.
+ * {@literal @}Assisted</code>, or they must be injectable.
  *
  * @author jmourits@google.com (Jerome Mourits)
  * @author jessewilson@google.com (Jesse Wilson)
  */
 @Target({CONSTRUCTOR})
 @Retention(RUNTIME)
+@Keep
 public @interface AssistedInject {}

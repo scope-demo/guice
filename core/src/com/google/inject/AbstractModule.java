@@ -53,9 +53,7 @@ import org.aopalliance.intercept.MethodInterceptor;
  */
 public abstract class AbstractModule implements Module {
 
-  Binder binder;
-
-  public AbstractModule() {}
+  private Binder binder;
 
   @Override
   public final synchronized void configure(Binder builder) {
@@ -88,12 +86,12 @@ public abstract class AbstractModule implements Module {
     return binder().bind(key);
   }
 
-  /** @see Binder#bind(TypeLiteral) */
+  /** See {@link Binder#bind(TypeLiteral)}. */
   protected <T> AnnotatedBindingBuilder<T> bind(TypeLiteral<T> typeLiteral) {
     return binder().bind(typeLiteral);
   }
 
-  /** @see Binder#bind(Class) */
+  /** See {@link Binder#bind(Class)}. */
   protected <T> AnnotatedBindingBuilder<T> bind(Class<T> clazz) {
     return binder().bind(clazz);
   }
@@ -134,14 +132,20 @@ public abstract class AbstractModule implements Module {
     binder().requestInjection(instance);
   }
 
+  /**
+   * @see Binder#requestInjection(TypeLiteral, Object)
+   * @since 6.0
+   */
+  protected <T> void requestInjection(TypeLiteral<T> type, T instance) {
+    binder().requestInjection(type, instance);
+  }
+
   /** @see Binder#requestStaticInjection(Class[]) */
   protected void requestStaticInjection(Class<?>... types) {
     binder().requestStaticInjection(types);
   }
 
-  /**
-   * @see {@link Binder#bindInterceptor(com.google.inject.matcher.Matcher, MethodInterceptor[])}.
-   */
+  /** @see Binder#bindInterceptor */
   protected void bindInterceptor(
       Matcher<? super Class<?>> classMatcher,
       Matcher<? super Method> methodMatcher,

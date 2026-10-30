@@ -16,18 +16,20 @@
 
 package com.google.inject;
 
-import static com.google.common.base.StandardSystemProperty.JAVA_SPECIFICATION_VERSION;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.common.collect.Iterables;
 import com.google.inject.internal.Annotations;
 import com.google.inject.name.Names;
 import com.google.inject.spi.Message;
-import java.net.InetAddress;
 import java.util.List;
 import junit.framework.TestCase;
 
-/** @author crazybob@google.com (Bob Lee) */
+/**
+ * @author crazybob@google.com (Bob Lee)
+ */
 public class ImplicitBindingTest extends TestCase {
 
   public void testCircularDependency() throws CreationException {
@@ -122,8 +124,8 @@ public class ImplicitBindingTest extends TestCase {
    * dependencies. And so we can successfully create a binding for B. But later, when the binding
    * for A ultimately fails, we need to clean up the dependent binding for B.
    *
-   * <p>The test loops through linked bindings & bindings with constructor & member injections, to
-   * make sure that all are cleaned up and traversed. It also makes sure we don't touch explicit
+   * <p>The test loops through linked bindings and bindings with constructor and member injections,
+   * to make sure that all are cleaned up and traversed. It also makes sure we don't touch explicit
    * bindings.
    */
   public void testCircularJitBindingsLeaveNoResidue() {
@@ -322,10 +324,10 @@ public class ImplicitBindingTest extends TestCase {
    * sequence of JIT bindings:
    *
    * <ol>
-   * <li> A-> B
-   * <li> B -> C, A
-   * <li> C -> A, D
-   * <li> D not JITable
+   *   <li>A-> B
+   *   <li>B -> C, A
+   *   <li>C -> A, D
+   *   <li>D not JITable
    * </ol>
    *
    * <p>The problem was that C cleaned up A's binding and then handed control back to B, which tried
@@ -434,13 +436,99 @@ public class ImplicitBindingTest extends TestCase {
 
   private static class EnumWithImplementedByEnum {}
 
-  public void testImplicitJdkBindings() {
+  public void testImplicitJdkBindings_publicCxtor() {
     Injector injector = Guice.createInjector();
     // String has a public nullary constructor, so Guice will call it.
     assertEquals("", injector.getInstance(String.class));
-    // InetAddress has a package private constructor.  We probably shouldn't be calling it :(
-    if (Double.parseDouble(JAVA_SPECIFICATION_VERSION.value()) < 17) {
-      assertNotNull(injector.getInstance(InetAddress.class));
-    }
   }
+
+  public void testRecursiveLoadWithOptionals() {
+    Injector injector =
+        Guice.createInjector(
+            new AbstractModule() {
+              @Override
+              protected void configure() {
+                bind(A1.class);
+              }
+            });
+    assertThat(injector.getExistingBinding(Key.get(D1.class))).isNull();
+    assertThat(injector.getExistingBinding(Key.get(Unresolved.class))).isNull();
+  }
+
+  static class A1 {
+    @Inject B1 b;
+  }
+
+  static class B1 {
+    @Inject C1 c;
+  }
+
+  static class C1 {
+    @Inject(optional = true)
+    D1 d;
+
+    @Inject E1 e;
+  }
+
+  static class D1 {
+    @Inject B1 b;
+    @Inject Unresolved unresolved;
+  }
+
+  static class E1 {
+    @Inject B1 b;
+  }
+
+  public void testRecursiveLoadWithoutOptionals_atInjectorCreation() {
+    CreationException ce =
+        assertThrows(
+            CreationException.class,
+            () ->
+                Guice.createInjector(
+                    new AbstractModule() {
+                      @Provides
+                      public V provideV(Z z) {
+                        return null;
+                      }
+                    }));
+    assertThat(ce.getErrorMessages()).hasSize(1);
+    assertThat(getOnlyElement(ce.getErrorMessages()).getMessage())
+        .contains("No implementation for " + Unresolved.class.getName() + " was bound.");
+  }
+
+  public void testRecursiveLoadWithoutOptionals_afterCreation() {
+    Injector injector = Guice.createInjector();
+    ConfigurationException ce =
+        assertThrows(ConfigurationException.class, () -> injector.getBinding(Z.class));
+    assertThat(ce.getErrorMessages()).hasSize(1);
+    assertThat(getOnlyElement(ce.getErrorMessages()).getMessage())
+        .contains("No implementation for " + Unresolved.class.getName() + " was bound.");
+    assertThat(injector.getExistingBinding(Key.get(Z.class))).isNull();
+    assertThat(injector.getExistingBinding(Key.get(Y.class))).isNull();
+    assertThat(injector.getExistingBinding(Key.get(X.class))).isNull();
+    assertThat(injector.getExistingBinding(Key.get(W.class))).isNull();
+    assertThat(injector.getExistingBinding(Key.get(Unresolved.class))).isNull();
+  }
+
+  static class V {}
+
+  static class X {
+    @Inject Z z;
+  }
+
+  static class Z {
+    @Inject W w;
+    @Inject X x;
+  }
+
+  static class W {
+    @Inject Y y;
+    @Inject Z z;
+  }
+
+  static class Y {
+    @Inject Unresolved unresolved;
+  }
+
+  interface Unresolved {}
 }

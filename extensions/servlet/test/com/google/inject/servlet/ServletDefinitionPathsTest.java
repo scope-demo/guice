@@ -17,11 +17,9 @@
 package com.google.inject.servlet;
 
 import static com.google.inject.servlet.ManagedServletPipeline.REQUEST_DISPATCHER_REQUEST;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.common.collect.Sets;
 import com.google.inject.Binding;
@@ -30,10 +28,10 @@ import com.google.inject.Key;
 import com.google.inject.spi.BindingScopingVisitor;
 import java.io.IOException;
 import java.util.HashMap;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import junit.framework.TestCase;
 
 /**
@@ -62,19 +60,18 @@ public class ServletDefinitionPathsTest extends TestCase {
       final String requestPath, String mapping, final String expectedServletPath)
       throws IOException, ServletException {
 
-    Injector injector = createMock(Injector.class);
-    Binding<HttpServlet> binding = createMock(Binding.class);
-    HttpServletRequest request = createMock(HttpServletRequest.class);
-    HttpServletResponse response = createMock(HttpServletResponse.class);
+    Injector injector = mock(Injector.class);
+    Binding<HttpServlet> binding = mock(Binding.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletResponse response = mock(HttpServletResponse.class);
 
-    expect(binding.acceptScopingVisitor((BindingScopingVisitor<Boolean>) anyObject()))
-        .andReturn(true);
-    expect(injector.getBinding(Key.get(HttpServlet.class))).andReturn(binding);
+    when(binding.acceptScopingVisitor((BindingScopingVisitor<Boolean>) any())).thenReturn(true);
+    when(injector.getBinding(Key.get(HttpServlet.class))).thenReturn(binding);
 
     final boolean[] run = new boolean[1];
-    //get an instance of this servlet
-    expect(injector.getInstance(Key.get(HttpServlet.class)))
-        .andReturn(
+    // get an instance of this servlet
+    when(injector.getInstance(Key.get(HttpServlet.class)))
+        .thenReturn(
             new HttpServlet() {
 
               @Override
@@ -91,9 +88,7 @@ public class ServletDefinitionPathsTest extends TestCase {
               }
             });
 
-    expect(request.getServletPath()).andReturn(requestPath);
-
-    replay(injector, binding, request);
+    when(request.getServletPath()).thenReturn(requestPath);
 
     ServletDefinition servletDefinition =
         new ServletDefinition(
@@ -106,8 +101,6 @@ public class ServletDefinitionPathsTest extends TestCase {
     servletDefinition.doService(request, response);
 
     assertTrue("Servlet did not run!", run[0]);
-
-    verify(injector, binding, request);
   }
 
   // Data-driven test.
@@ -143,6 +136,9 @@ public class ServletDefinitionPathsTest extends TestCase {
         "/path", "/*", "/a file with spaces in name.html", "");
     pathInfoWithServletStyleMatching(
         "/path/Tam%C3%A1s%20nem%20m%C3%A1s.html", "/path", "/*", "/Tamás nem más.html", "");
+
+    // see https://github.com/google/guice/issues/1655
+    pathInfoWithServletStyleMatching("/index.html", null, "/*", "/index.html", "");
   }
 
   private void pathInfoWithServletStyleMatching(
@@ -153,19 +149,18 @@ public class ServletDefinitionPathsTest extends TestCase {
       final String servletPath)
       throws IOException, ServletException {
 
-    Injector injector = createMock(Injector.class);
-    Binding<HttpServlet> binding = createMock(Binding.class);
-    HttpServletRequest request = createMock(HttpServletRequest.class);
-    HttpServletResponse response = createMock(HttpServletResponse.class);
+    Injector injector = mock(Injector.class);
+    Binding<HttpServlet> binding = mock(Binding.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletResponse response = mock(HttpServletResponse.class);
 
-    expect(binding.acceptScopingVisitor((BindingScopingVisitor<Boolean>) anyObject()))
-        .andReturn(true);
-    expect(injector.getBinding(Key.get(HttpServlet.class))).andReturn(binding);
+    when(binding.acceptScopingVisitor((BindingScopingVisitor<Boolean>) any())).thenReturn(true);
+    when(injector.getBinding(Key.get(HttpServlet.class))).thenReturn(binding);
 
     final boolean[] run = new boolean[1];
-    //get an instance of this servlet
-    expect(injector.getInstance(Key.get(HttpServlet.class)))
-        .andReturn(
+    // get an instance of this servlet
+    when(injector.getInstance(Key.get(HttpServlet.class)))
+        .thenReturn(
             new HttpServlet() {
 
               @Override
@@ -185,7 +180,7 @@ public class ServletDefinitionPathsTest extends TestCase {
                       path);
                 }
 
-                //assert memoizer
+                // assert memoizer
                 //noinspection StringEquality
                 assertSame("memo field did not work", path, servletRequest.getPathInfo());
 
@@ -193,15 +188,13 @@ public class ServletDefinitionPathsTest extends TestCase {
               }
             });
 
-    expect(request.getRequestURI()).andReturn(requestUri);
+    when(request.getRequestURI()).thenReturn(requestUri);
 
-    expect(request.getServletPath()).andReturn(servletPath).anyTimes();
+    when(request.getServletPath()).thenReturn(servletPath);
 
-    expect(request.getContextPath()).andReturn(contextPath);
+    when(request.getContextPath()).thenReturn(contextPath);
 
-    expect(request.getAttribute(REQUEST_DISPATCHER_REQUEST)).andReturn(null);
-
-    replay(injector, binding, request);
+    when(request.getAttribute(REQUEST_DISPATCHER_REQUEST)).thenReturn(null);
 
     ServletDefinition servletDefinition =
         new ServletDefinition(
@@ -214,8 +207,6 @@ public class ServletDefinitionPathsTest extends TestCase {
     servletDefinition.doService(request, response);
 
     assertTrue("Servlet did not run!", run[0]);
-
-    verify(injector, binding, request);
   }
 
   // Data-driven test.
@@ -265,19 +256,18 @@ public class ServletDefinitionPathsTest extends TestCase {
       final String servletPath)
       throws IOException, ServletException {
 
-    Injector injector = createMock(Injector.class);
-    Binding<HttpServlet> binding = createMock(Binding.class);
-    HttpServletRequest request = createMock(HttpServletRequest.class);
-    HttpServletResponse response = createMock(HttpServletResponse.class);
+    Injector injector = mock(Injector.class);
+    Binding<HttpServlet> binding = mock(Binding.class);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletResponse response = mock(HttpServletResponse.class);
 
-    expect(binding.acceptScopingVisitor((BindingScopingVisitor<Boolean>) anyObject()))
-        .andReturn(true);
-    expect(injector.getBinding(Key.get(HttpServlet.class))).andReturn(binding);
+    when(binding.acceptScopingVisitor((BindingScopingVisitor<Boolean>) any())).thenReturn(true);
+    when(injector.getBinding(Key.get(HttpServlet.class))).thenReturn(binding);
 
     final boolean[] run = new boolean[1];
-    //get an instance of this servlet
-    expect(injector.getInstance(Key.get(HttpServlet.class)))
-        .andReturn(
+    // get an instance of this servlet
+    when(injector.getInstance(Key.get(HttpServlet.class)))
+        .thenReturn(
             new HttpServlet() {
 
               @Override
@@ -297,7 +287,7 @@ public class ServletDefinitionPathsTest extends TestCase {
                       path);
                 }
 
-                //assert memoizer
+                // assert memoizer
                 //noinspection StringEquality
                 assertSame("memo field did not work", path, servletRequest.getPathInfo());
 
@@ -305,15 +295,13 @@ public class ServletDefinitionPathsTest extends TestCase {
               }
             });
 
-    expect(request.getRequestURI()).andReturn(requestUri);
+    when(request.getRequestURI()).thenReturn(requestUri);
 
-    expect(request.getServletPath()).andReturn(servletPath).anyTimes();
+    when(request.getServletPath()).thenReturn(servletPath);
 
-    expect(request.getContextPath()).andReturn(contextPath);
+    when(request.getContextPath()).thenReturn(contextPath);
 
-    expect(request.getAttribute(REQUEST_DISPATCHER_REQUEST)).andReturn(null);
-
-    replay(injector, binding, request);
+    when(request.getAttribute(REQUEST_DISPATCHER_REQUEST)).thenReturn(null);
 
     ServletDefinition servletDefinition =
         new ServletDefinition(
@@ -326,7 +314,5 @@ public class ServletDefinitionPathsTest extends TestCase {
     servletDefinition.doService(request, response);
 
     assertTrue("Servlet did not run!", run[0]);
-
-    verify(injector, binding, request);
   }
 }

@@ -47,11 +47,13 @@ import org.aopalliance.intercept.MethodInterceptor;
  * <pre>
  *     bind(ServiceImpl.class);</pre>
  *
- * This statement does essentially nothing; it "binds the {@code ServiceImpl} class to itself" and
- * does not change Guice's default behavior. You may still want to use this if you prefer your
- * {@link Module} class to serve as an explicit <i>manifest</i> for the services it provides. Also,
- * in rare cases, Guice may be unable to validate a binding at injector creation time unless it is
- * given explicitly.
+ * This statement mostly does nothing; it "binds the {@code ServiceImpl} class to itself". You may
+ * still want to use this if you prefer your {@link Module} class to serve as an explicit
+ * <i>manifest</i> for the services it provides. In rare cases, Guice may be unable to validate a
+ * binding at injector creation time unless it is given explicitly. When using hierarchical
+ * injectors (via {@code Binder.newPrivateBinder}, {@code Binder.PrivateModule}, or {@code
+ * Injector.createChildInjector}), this guidance changes: see the note on hierarchical injectors in
+ * {@link Injector.createChildInjector}.
  *
  * <pre>
  *     bind(Service.class).to(ServiceImpl.class);</pre>
@@ -103,9 +105,10 @@ import org.aopalliance.intercept.MethodInterceptor;
  * available in {@code com.google.inject.servlet.ServletScopes}, and your Modules can contribute
  * their own custom scopes for use here as well.
  *
- * <pre>
- *     bind(new TypeLiteral&lt;PaymentService&lt;CreditCard>>() {})
- *         .to(CreditCardPaymentService.class);</pre>
+ * <pre>{@code
+ * bind(new TypeLiteral<PaymentService<CreditCard>>() {})
+ *     .to(CreditCardPaymentService.class);
+ * }</pre>
  *
  * This admittedly odd construct is the way to bind a parameterized type. It tells Guice how to
  * honor an injection request for an element of type {@code PaymentService<CreditCard>}. The class
@@ -156,10 +159,11 @@ import org.aopalliance.intercept.MethodInterceptor;
  * these names will live in a single flat namespace with all the other names used in your
  * application.
  *
- * <pre>
- *     Constructor<T> loneCtor = getLoneCtorFromServiceImplViaReflection();
- *     bind(ServiceImpl.class)
- *         .toConstructor(loneCtor);</pre>
+ * <pre>{@code
+ * Constructor<T> loneCtor = getLoneCtorFromServiceImplViaReflection();
+ * bind(ServiceImpl.class)
+ *     .toConstructor(loneCtor);
+ * }</pre>
  *
  * In this example, we directly tell Guice which constructor to use in a concrete class
  * implementation. It means that we do not need to place {@literal @}Inject on any of the

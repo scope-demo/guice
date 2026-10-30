@@ -8,7 +8,7 @@ import java.util.function.Predicate;
 
 /**
  * Class to conditionally load support for Kotlin features. These features are enabled based on
- * whether {@code com.google.inject.kotlin.KotlinSupportImpl} is in the class path.
+ * whether {@code com.google.inject.KotlinSupportImpl} is in the class path.
  */
 public final class KotlinSupport {
 
@@ -27,7 +27,7 @@ public final class KotlinSupport {
       @SuppressWarnings("unchecked")
       Class<? extends KotlinSupportInterface> kotlinSupportClass =
           (Class<? extends KotlinSupportInterface>)
-              Class.forName("com.google.inject.kotlin.KotlinSupportImpl");
+              Class.forName("com.google.inject.KotlinSupportImpl");
       Field instance = kotlinSupportClass.getField("INSTANCE");
       instance.setAccessible(true);
       return (KotlinSupportInterface) instance.get(null);
@@ -68,6 +68,21 @@ public final class KotlinSupport {
     @Override
     public boolean isLocalClass(Class<?> clazz) {
       return false;
+    }
+
+    @Override
+    public boolean isValueClass(Class<?> clazz) {
+      return false;
+    }
+
+    @Override
+    public boolean isKotlinClass(Class<?> clazz) {
+      return false;
+    }
+
+    @Override
+    public StackTraceElement maybeDemangleSTE(StackTraceElement element, Class<?> clazz) {
+      return element;
     }
   }
 }

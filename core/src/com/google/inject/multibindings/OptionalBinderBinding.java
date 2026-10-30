@@ -45,7 +45,7 @@ public interface OptionalBinderBinding<T> {
   /**
    * Returns the keys of other bindings that represent this OptionalBinder. This will return an
    * entry for {@code Optional<com.google.inject.Provider<V>>} and {@code
-   * Optional<javax.inject.Provider<V>>}.
+   * Optional<jakarta.inject.Provider<V>>}.
    *
    * @since 4.2.3
    */
@@ -57,8 +57,8 @@ public interface OptionalBinderBinding<T> {
    * called on an element retrieved from {@link Elements#getElements}.
    *
    * <p>The Binding's type will always match the type Optional's generic type. For example, if
-   * getKey returns a key of <code>Optional&lt;String></code>, then this will always return a <code>
-   * Binding&lt;String></code>.
+   * getKey returns a key of {@code Optional<String>}, then this will always return a {@code
+   * Binding<String>}.
    */
   Binding<?> getDefaultBinding();
 
@@ -68,8 +68,8 @@ public interface OptionalBinderBinding<T> {
    * {@link Elements#getElements}.
    *
    * <p>The Binding's type will always match the type Optional's generic type. For example, if
-   * getKey returns a key of <code>Optional&lt;String></code>, then this will always return a <code>
-   * Binding&lt;String></code>.
+   * getKey returns a key of {@code Optional<String>}, then this will always return a {@code
+   * Binding<String>}.
    */
   Binding<?> getActualBinding();
 

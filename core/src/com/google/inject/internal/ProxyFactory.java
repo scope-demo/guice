@@ -16,12 +16,16 @@
 
 package com.google.inject.internal;
 
+import static java.lang.invoke.MethodType.methodType;
+
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.inject.spi.InjectionPoint;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -131,7 +135,7 @@ final class ProxyFactory<T> implements ConstructionProxyFactory<T> {
       callbacks[callbackIndex++] = new InterceptorStackCallback(method, deDuplicated, superInvoker);
     }
 
-    interceptors = interceptorsMapBuilder.build();
+    interceptors = interceptorsMapBuilder.buildOrThrow();
   }
 
   /** Returns the interceptors that apply to the constructed type. */
@@ -181,6 +185,24 @@ final class ProxyFactory<T> implements ConstructionProxyFactory<T> {
     @SuppressWarnings("unchecked") // the enhancer promises to produce 'T's
     public T newInstance(Object... arguments) throws InvocationTargetException {
       return (T) enhancedConstructor.apply(callbacks, arguments);
+    }
+
+    @Override
+    public MethodHandle getConstructHandle(MethodHandle[] parameterHandles) {
+      var handle =
+          InternalMethodHandles.BIFUNCTION_APPLY_HANDLE
+              .bindTo(enhancedConstructor)
+              .asType(methodType(Object.class, Object.class, Object[].class));
+      // (Object[])->Object
+      handle = MethodHandles.insertArguments(handle, 0, (Object) callbacks);
+      // catch here so we don't catch errors from our parameters
+      handle =
+          InternalMethodHandles.catchErrorInConstructorAndRethrowWithSource(handle, injectionPoint);
+      // (InternalContext)->Object
+      handle =
+          MethodHandles.filterArguments(
+              handle, 0, InternalMethodHandles.buildObjectArrayFactory(parameterHandles));
+      return handle;
     }
 
     @Override

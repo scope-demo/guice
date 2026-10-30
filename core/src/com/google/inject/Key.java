@@ -381,7 +381,7 @@ public class Key<T> {
   private static void ensureIsBindingAnnotation(Class<? extends Annotation> annotationType) {
     checkArgument(
         Annotations.isBindingAnnotation(annotationType),
-        "%s is not a binding annotation. Please annotate it with @BindingAnnotation.",
+        "%s is not a binding annotation. Please annotate it with @Qualifier.",
         annotationType.getName());
   }
 
@@ -513,7 +513,7 @@ public class Key<T> {
 
     @Override
     public String toString() {
-      return '@' + annotationType.getName();
+      return Annotations.annotationInstanceClassString(annotationType, /* includePackage= */ true);
     }
   }
 }

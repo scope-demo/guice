@@ -21,6 +21,7 @@ import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import com.google.errorprone.annotations.Keep;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -30,15 +31,15 @@ import java.lang.annotation.Target;
  * {@link Injector} should inject values. The Injector fulfills injection requests for:
  *
  * <ul>
- * <li>Every instance it constructs. The class being constructed must have exactly one of its
- *     constructors marked with {@code @Inject} or must have a constructor taking no parameters. The
- *     Injector then proceeds to perform field and method injections.
- * <li>Pre-constructed instances passed to {@link Injector#injectMembers}, {@link
- *     com.google.inject.binder.LinkedBindingBuilder#toInstance(Object)} and {@link
- *     com.google.inject.binder.LinkedBindingBuilder#toProvider(javax.inject.Provider)}. In this
- *     case all constructors are, of course, ignored.
- * <li>Static fields and methods of classes which any {@link Module} has specifically requested
- *     static injection for, using {@link Binder#requestStaticInjection}.
+ *   <li>Every instance it constructs. The class being constructed must have exactly one of its
+ *       constructors marked with {@code @Inject} or must have a constructor taking no parameters.
+ *       The Injector then proceeds to perform field and method injections.
+ *   <li>Pre-constructed instances passed to {@link Injector#injectMembers}, {@link
+ *       com.google.inject.binder.LinkedBindingBuilder#toInstance(Object)} and {@link
+ *       com.google.inject.binder.LinkedBindingBuilder#toProvider(jakarta.inject.Provider)}. In this
+ *       case all constructors are, of course, ignored.
+ *   <li>Static fields and methods of classes which any {@link Module} has specifically requested
+ *       static injection for, using {@link Binder#requestStaticInjection}.
  * </ul>
  *
  * In all cases, a member can be injected regardless of its Java access specifier (private, default,
@@ -49,6 +50,7 @@ import java.lang.annotation.Target;
 @Target({METHOD, CONSTRUCTOR, FIELD})
 @Retention(RUNTIME)
 @Documented
+@Keep
 public @interface Inject {
 
   /**

@@ -36,6 +36,7 @@ import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.PrivateModule;
 import com.google.inject.Provides;
+import com.google.inject.internal.Annotations;
 import com.google.inject.internal.ProviderMethodsModule;
 import com.google.inject.internal.util.StackTraceElements;
 import com.google.inject.name.Named;
@@ -46,7 +47,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.Set;
-import javax.inject.Qualifier;
+import jakarta.inject.Qualifier;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -159,8 +160,7 @@ public class ModuleAnnotatedMethodScannerTest {
 
   private String methodName(Class<? extends Annotation> annotation, String method, Object container)
       throws Exception {
-    return "@"
-        + annotation.getName()
+    return Annotations.annotationInstanceClassString(annotation, /* includePackage= */ true)
         + " "
         + StackTraceElements.forMember(container.getClass().getDeclaredMethod(method));
   }
@@ -1033,6 +1033,54 @@ public class ModuleAnnotatedMethodScannerTest {
 
     assertThat(getSourceScanner(injector.getBinding(Key.get(String.class, Foo.class))))
         .isEqualTo(scanner);
+  }
+
+  static class DelegatingScanner extends ModuleAnnotatedMethodScanner {
+    Object delegate = null;
+
+    @Override
+    public Set<? extends Class<? extends Annotation>> annotationClasses() {
+      return ImmutableSet.of(TestProvides.class);
+    }
+
+    @Override
+    public <T> Key<T> prepareMethod(
+        Binder binder,
+        Annotation annotation,
+        Key<T> key,
+        InjectionPoint injectionPoint,
+        Object delegate) {
+      this.delegate = delegate;
+      return key;
+    }
+  }
+
+  @Test
+  public void scannerPropagatesTheDelegateObject() {
+    DelegatingScanner scanner = new DelegatingScanner();
+    AbstractModule module =
+        new AbstractModule() {
+          @TestProvides
+          String provideString() {
+            return "foo";
+          }
+        };
+    Guice.createInjector(scannerModule(scanner), module);
+    assertThat(scanner.delegate).isSameInstanceAs(module);
+  }
+
+  static class StaticProvider extends AbstractModule {
+    @TestProvides
+    static String provideString() {
+      return "foo";
+    }
+  }
+
+  @Test
+  public void staticScannerPropagatesNullDelegateObject() {
+    DelegatingScanner scanner = new DelegatingScanner();
+    Guice.createInjector(ProviderMethodsModule.forModule(StaticProvider.class, scanner));
+    assertThat(scanner.delegate).isNull();
   }
 
   ModuleAnnotatedMethodScanner getSourceScanner(Binding<?> binding) {

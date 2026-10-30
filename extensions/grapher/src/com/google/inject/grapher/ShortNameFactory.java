@@ -20,6 +20,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
+import com.google.inject.internal.Annotations;
 import com.google.inject.internal.ProviderMethod;
 import com.google.inject.internal.util.StackTraceElements;
 import com.google.inject.spi.ElementSource;
@@ -55,9 +56,10 @@ public class ShortNameFactory implements NameFactory {
       annotationType = annotation.annotationType();
 
       String annotationString = annotation.toString();
-      String canonicalName = annotationType.getName();
+      String canonicalName =
+          Annotations.annotationInstanceClassString(annotationType, /* includePackage = */ true)
+              .substring(1);
       String simpleName = annotationType.getSimpleName();
-
       return annotationString.replace(canonicalName, simpleName).replace("()", "");
     } else if (annotationType != null) {
       return "@" + annotationType.getSimpleName();

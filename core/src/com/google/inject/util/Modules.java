@@ -22,6 +22,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.errorprone.annotations.CheckReturnValue;
+import com.google.errorprone.annotations.InlineMe;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.google.inject.Binding;
@@ -51,6 +53,7 @@ import java.util.Set;
  * @author jessewilson@google.com (Jesse Wilson)
  * @since 2.0
  */
+@CheckReturnValue
 public final class Modules {
   private Modules() {}
 
@@ -120,7 +123,10 @@ public final class Modules {
     return combine(ImmutableSet.copyOf(modules));
   }
 
-  /** @deprecated there's no need to "combine" one module; just install it directly. */
+  /**
+   * @deprecated there's no need to "combine" one module; just install it directly.
+   */
+  @InlineMe(replacement = "module")
   @Deprecated
   public static Module combine(Module module) {
     return module;
@@ -336,12 +342,13 @@ public final class Modules {
           } else {
             List<Object> usedSources = scopeInstancesInUse.get(scopeBinding.getScope());
             if (usedSources != null) {
+              @SuppressWarnings("OrphanedFormatString") // passed to format method addError below
               StringBuilder sb =
                   new StringBuilder(
                       "The scope for @%s is bound directly and cannot be overridden.");
-              sb.append("%n     original binding at " + Errors.convert(scopeBinding.getSource()));
+              sb.append("\n     original binding at " + Errors.convert(scopeBinding.getSource()));
               for (Object usedSource : usedSources) {
-                sb.append("%n     bound directly at " + Errors.convert(usedSource) + "");
+                sb.append("\n     bound directly at " + Errors.convert(usedSource) + "");
               }
               binder
                   .withSource(overideBinding.getSource())
